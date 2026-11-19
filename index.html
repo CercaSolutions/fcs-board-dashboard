@@ -240,7 +240,7 @@ function vSheet(){
     return '<tr class="'+(r.src==='master'?'auto':'')+'"><td>'+esc(r.tab)+'</td><td><label for="v_'+r.id+'">'+esc(r.label)+'</label></td>'
      +'<td><input id="v_'+r.id+'" data-id="'+r.id+'" data-f="value" value="'+esc(val)+'"></td>'
      +'<td><input id="d_'+r.id+'" data-id="'+r.id+'" data-f="asOf" type="date" value="'+esc(r.asOf)+'" aria-label="As of date for '+esc(r.label)+'"></td>'
-     +'<td>'+(r.src==='master'?'Master list for Measures':'Typed by the President')+'</td></tr>';}).join('');
+     +'<td>'+(r.src==='master'?'Master list for Measures':'Entered in manually')+'</td></tr>';}).join('');
   var mon=MONTHS.map(function(x,i){return '<tr class="auto"><td>'+esc(x.m)+'</td><td><input id="mr_'+i+'" data-m="'+i+'" data-f="rev" value="'+x.rev+'" aria-label="Revenue for '+esc(x.m)+'"></td><td><input id="me_'+i+'" data-m="'+i+'" data-f="exp" value="'+x.exp+'" aria-label="Expenses for '+esc(x.m)+'"></td></tr>';}).join('');
   return '<div class="card" style="gap:6px"><h2>This screen stands in for the Google Sheet</h2><p class="note" style="margin:0">Change any value, then open another tab to see the dashboard redraw. In the real version these are cells in the sheet. Shaded rows would fill in from the Master list for Measures, so only the white rows are typed. Changes here are not saved when you close the page.</p><div id="saved" class="small" role="status" aria-live="polite"></div></div>'
    +'<div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Tab</th><th>Item</th><th>Value</th><th>As of</th><th>Where it comes from</th></tr></thead><tbody>'+body+'</tbody></table></div>'
