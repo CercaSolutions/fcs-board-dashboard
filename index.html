@@ -207,7 +207,7 @@ var ROWS = [
 var MONTHS = [
  {m:'Jan',rev:95000,exp:98000},{m:'Feb',rev:100000,exp:96000},{m:'Mar',rev:110000,exp:102000},{m:'Apr',rev:105000,exp:100000},
  {m:'May',rev:120000,exp:104000},{m:'Jun',rev:98000,exp:99000},{m:'Jul',rev:112000,exp:101000},{m:'Aug',rev:108000,exp:103000},
- {m:'Sep',rev:125000,exp:100000},{m:'Oct',rev:115000,exp:98000},{m:'Nov',rev:112000,exp:99000}
+ {m:'Sep',rev:125000,exp:100000},{m:'Oct',rev:115000,exp:98000},{m:'Nov',rev:112000,exp:99000},{m:'Dec',rev:null,exp:null}
 ];
 var PILLAR = {'Footprint':'var(--navy)','Housing':'var(--teal)','Economic Development':'var(--green)','Health and Wellness':'var(--orange)','Education':'var(--lime)'};
 var VIEWS = ['overview','money','neighborhoods','priorities','sheet'];
@@ -220,6 +220,8 @@ function money(n){if(n==null)return 'Not entered';var a=Math.abs(n),s=n<0?'-':''
 function show(r){var v=r.value;if(v==null||v==='')return 'Not entered yet';if(r.unit==='usd')return money(v);if(r.unit==='pct')return v+'%';if(r.unit==='months')return v+' months';if(r.unit==='count')return Number(v).toLocaleString('en-US');return String(v);}
 function asOfText(d){if(!d)return '';var p=d.split('-');var names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return names[(+p[1]||1)-1]+' '+p[0];}
 function stale(r){return !r.asOf || r.asOf < SETTINGS.lastMeeting;}
+// Months through the last one with a number entered. Budget to date and the chart line stop there.
+function entered(){var n=0;MONTHS.forEach(function(x,i){if(x.rev!=null||x.exp!=null)n=i+1;});return n;}
 function sum(k){return MONTHS.reduce(function(t,x){return t+(+x[k]||0);},0);}
 function pctOf(a,b){return (b&&a!=null)?Math.round(a/b*100):null;}
 function bar(p,cls){p=Math.max(0,Math.min(100,p||0));return '<div class="bar '+(cls||'')+'"><i style="width:'+p+'%"></i></div>';}
@@ -241,13 +243,14 @@ function lineChart(){
   function X(i){return L+(W-L-R)*i/(MONTHS.length-1);} function Y(v){return T+(H-T-B)*(1-v/top);}
   var g='';for(var v=0;v<=top;v+=step){g+='<line x1="'+L+'" y1="'+Y(v)+'" x2="'+(W-R)+'" y2="'+Y(v)+'" stroke="#E4E7EA"/><text x="'+(L-8)+'" y="'+(Y(v)+4)+'" font-size="12" text-anchor="end" fill="#63666A">'+money(v)+'</text>';}
   var lab=MONTHS.map(function(x,i){return '<text x="'+X(i)+'" y="'+(H-10)+'" font-size="12" text-anchor="middle" fill="#63666A">'+esc(x.m)+'</text>';}).join('');
-  function pts(k){return MONTHS.map(function(x,i){return X(i).toFixed(1)+','+Y(+x[k]||0).toFixed(1);}).join(' ');}
-  var last=MONTHS.length-1;
+  var done=entered();
+  function pts(k){return MONTHS.slice(0,done).map(function(x,i){return X(i).toFixed(1)+','+Y(+x[k]||0).toFixed(1);}).join(' ');}
+  var last=Math.max(0,done-1);
   return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Monthly revenue and expenses against the monthly budget">'+g
    +'<line x1="'+L+'" y1="'+Y(bud)+'" x2="'+(W-R)+'" y2="'+Y(bud)+'" stroke="#63666A" stroke-dasharray="3 5"/>'
    +'<polyline points="'+pts('exp')+'" fill="none" stroke="#F05A22" stroke-width="3" stroke-dasharray="8 6"/>'
    +'<polyline points="'+pts('rev')+'" fill="none" stroke="#0D2746" stroke-width="4"/>'
-   +'<circle cx="'+X(last)+'" cy="'+Y(MONTHS[last].rev)+'" r="6" fill="#0D2746"/>'+lab+'</svg>'
+   +'<circle cx="'+X(last)+'" cy="'+Y(+MONTHS[last].rev||0)+'" r="6" fill="#0D2746"/>'+lab+'</svg>'
    +'<div class="legend"><span><i style="background:#0D2746"></i>Revenue</span><span><i style="background:#F05A22"></i>Expenses (dashed)</span><span><i style="background:#63666A"></i>Monthly budget (dotted)</span></div>';
 }
 function statusPill(v){var c=(v==='On track')?'ok':(v==='Behind'?'behind':'watch');return '<span class="pill '+c+'">'+esc(v||'Not set')+'</span>';}
@@ -259,7 +262,7 @@ function asksCard(){var a=group('asks').filter(function(r){return r.value;});
   return '<div class="card navy"><img class="watermark" src="assets/brand/fcs-mark-color.svg" alt=""><h2>Where the board can help</h2>'+(a.length?a.map(function(r){return '<div>'+esc(r.value)+'</div>';}).join(''):'<div>Nothing entered yet.</div>')+'</div>';}
 
 function vOverview(){
-  var rev=sum('rev'),bud=(num('budget_month')||0)*MONTHS.length,pr=group('priorities'),on=pr.filter(function(r){return r.value==='On track';}).length;
+  var rev=sum('rev'),bud=(num('budget_month')||0)*entered(),pr=group('priorities'),on=pr.filter(function(r){return r.value==='On track';}).length;
   var tiles=[
    ['money','Revenue, year to date',money(rev),(pctOf(rev,bud)==null?'':pctOf(rev,bud)+'% of budget to date'),'navy'],
    ['money','Cash on hand',(num('cash_months')==null?'Not entered':num('cash_months')+' mo.'),'months of expenses','navy'],
@@ -273,7 +276,7 @@ function vOverview(){
    +'<div class="card"><h2>Programs and partners</h2><div>The logic model shows every program, partner and measure by area.</div><a href="'+LOGIC+'">Open the logic model</a></div></div></div>';
 }
 function vMoney(){
-  var rev=sum('rev'),exp=sum('exp'),n=MONTHS.length,rb=(num('budget_month')||0)*n,eb=(num('budget_month_exp')||0)*n,tgt=num('reserve_target');
+  var rev=sum('rev'),exp=sum('exp'),n=entered(),rb=(num('budget_month')||0)*n,eb=(num('budget_month_exp')||0)*n,tgt=num('reserve_target');
   var fp=pctOf(num('fund_raised'),num('fund_goal'))||0;
   var SPEND={'Housing':'var(--teal)','Economic Vitality':'var(--green)','Education':'var(--lime)','Health and Wellness':'var(--orange)','Back office':'var(--gray)'};
   function bars(g,cls,colors){return group(g).map(function(r){var b=bar(r.value,cls);if(colors&&colors[r.label])b=b.replace('<i style="','<i style="background:'+colors[r.label]+';');return '<div style="display:flex;flex-direction:column;gap:4px"><div class="row" style="border:0;padding:0"><span>'+esc(r.label)+'</span><b>'+esc(show(r))+'</b></div>'+b+'</div>';}).join('');}
@@ -305,7 +308,7 @@ function vSheet(){
      +'<td><input id="v_'+r.id+'" data-id="'+r.id+'" data-f="value" value="'+esc(val)+'"></td>'
      +'<td><input id="d_'+r.id+'" data-id="'+r.id+'" data-f="asOf" type="date" value="'+esc(r.asOf)+'" aria-label="As of date for '+esc(r.label)+'"></td>'
      +'<td>'+(r.src==='master'?'Master list for Measures':'Entered in manually')+'</td></tr>';}).join('');
-  var mon=MONTHS.map(function(x,i){return '<tr class="auto"><td>'+esc(x.m)+'</td><td><input id="mr_'+i+'" data-m="'+i+'" data-f="rev" value="'+x.rev+'" aria-label="Revenue for '+esc(x.m)+'"></td><td><input id="me_'+i+'" data-m="'+i+'" data-f="exp" value="'+x.exp+'" aria-label="Expenses for '+esc(x.m)+'"></td></tr>';}).join('');
+  var mon=MONTHS.map(function(x,i){return '<tr class="auto"><td>'+esc(x.m)+'</td><td><input id="mr_'+i+'" data-m="'+i+'" data-f="rev" value="'+(x.rev==null?'':x.rev)+'" aria-label="Revenue for '+esc(x.m)+'"></td><td><input id="me_'+i+'" data-m="'+i+'" data-f="exp" value="'+(x.exp==null?'':x.exp)+'" aria-label="Expenses for '+esc(x.m)+'"></td></tr>';}).join('');
   return '<div class="card" style="gap:6px"><h2>This screen stands in for the Google Sheet</h2><p class="note" style="margin:0">Change any value, then open another tab to see the dashboard redraw. In the real version these are cells in the sheet. Shaded rows would fill in from the Master list for Measures, so only the white rows are typed. Changes here are not saved when you close the page.</p><div id="saved" class="small" role="status" aria-live="polite"></div></div>'
    +'<div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Tab</th><th>Item</th><th>Value</th><th>As of</th><th>Where it comes from</th></tr></thead><tbody>'+body+'</tbody></table></div>'
    +'<div class="tablewrap" style="margin-top:16px"><table style="min-width:420px"><thead><tr><th>Month</th><th>Revenue</th><th>Expenses</th></tr></thead><tbody>'+mon+'</tbody></table></div>';
@@ -331,7 +334,7 @@ function go(name){
 document.addEventListener('click',function(e){var t=e.target.closest('[data-view]');if(t){go(t.getAttribute('data-view'));}});
 document.addEventListener('change',function(e){
   var t=e.target;if(!t.matches||!t.matches('input'))return;
-  if(t.hasAttribute('data-m')){var n=parseFloat(t.value);MONTHS[+t.getAttribute('data-m')][t.getAttribute('data-f')]=isFinite(n)?n:0;}
+  if(t.hasAttribute('data-m')){var n=parseFloat(t.value);MONTHS[+t.getAttribute('data-m')][t.getAttribute('data-f')]=isFinite(n)?n:null;}
   else if(t.hasAttribute('data-id')){var r=row(t.getAttribute('data-id')),f=t.getAttribute('data-f');
     if(f==='asOf'){r.asOf=t.value;}
     else if(r.unit==='text'||r.unit==='status'){r.value=t.value;}
